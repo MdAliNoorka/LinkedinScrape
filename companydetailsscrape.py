@@ -17,7 +17,7 @@ expiry_date = datetime.now() + timedelta(days=60)
 expiry_timestamp = int(time.mktime(expiry_date.timetuple()))
 
 # li_at cookie value
-value = "REPLACE_WITH_COOKIE"
+value = "YOUR_COOKIE_VALUE"
 # Initialize driver
 driver = get_driver()
 driver.get("https://www.linkedin.com/")
@@ -38,8 +38,8 @@ driver.refresh()
 
 # Initialize lists
 webs = []
-talent_roles = []
-
+talent_roles = ['hr']
+talent_urls = []
 # Iterate through URLs
 for url in urls:
     url = remove_url_parameters(url)
@@ -54,6 +54,8 @@ for url in urls:
         web = web_element.text
     except Exception as e:
         web = ""
+        talent_urls.append([])
+        webs.append(web)
         print(f"Error1: {e}")
         continue
     time.sleep(1)
@@ -82,6 +84,8 @@ for url in urls:
 )
             )
         except Exception as e:
+            talent_urls.append([])
+            webs.append(web)
             print(e)
             continue
     try:
@@ -90,6 +94,8 @@ for url in urls:
         )
     except Exception as e:
         print("No members found")
+        talent_urls.append(links)
+        webs.append(web)
         continue
     li = 0
     while 1:
@@ -115,20 +121,62 @@ for url in urls:
         if len(button) != 0:
             driver.execute_script("arguments[0].click();", button[0])
             time.sleep(1)
-    talent_roles.append(links)
+    talent_urls.append(links)
     webs.append(web)
 
-# Save results to CSV
+
+
+
+
+
+# Read the CSV file
 df = pd.read_csv("companies_unique.csv")
+
+# Add the 'Website Link' column
 df['Website Link'] = pd.Series(webs)
+
+
+# Define the output CSV file path
 output_csv_file_path = 'companies_unique.csv'
-max_len = max(len(sublist) for sublist in talent_roles)
 
+# Find the maximum length of sublists in talent_roles
+max_len = max(len(sublist) if isinstance(sublist, list) else 1 for sublist in talent_urls)
+
+# Pad the sublists in talent_roles to ensure they all have the same length
+padded_talent_urls = [sublist if isinstance(sublist, list) else [sublist] for sublist in talent_urls]
+padded_talent_urls = [sublist + [None] * (max_len - len(sublist)) for sublist in padded_talent_urls]
+
+# Print debugging information
+print(f'talent roles: {talent_urls}')
+print(f'padded talent roles: {padded_talent_urls}')
+print(f'max len: {max_len}')
+
+# Define the column names
 column_names = [f'Column {i+4}' for i in range(max_len)]
+print(f'column_names: {column_names}')
 
-talent_roles_df = pd.DataFrame(talent_roles, columns=column_names)
+# Create a DataFrame from the padded talent roles
+talent_urls_df = pd.DataFrame(padded_talent_urls, columns=column_names)
 
-df = pd.concat([df, talent_roles_df], axis=1)
+# Concatenate the original DataFrame with the new DataFrame
+df = pd.concat([df, talent_urls_df], axis=1)
 
+# Write the updated DataFrame to the CSV file
 df.to_csv(output_csv_file_path, index=False)
+
+
+#
+# # Save results to CSV
+# df = pd.read_csv("companies_unique.csv")
+# df['Website Link'] = pd.Series(webs)
+# output_csv_file_path = 'companies_unique.csv'
+# max_len = max(len(sublist) for sublist in talent_roles)
+#
+# column_names = [f'Column {i+4}' for i in range(max_len)]
+#
+# talent_roles_df = pd.DataFrame(talent_roles, columns=column_names)
+#
+# df = pd.concat([df, talent_roles_df], axis=1)
+#
+# df.to_csv(output_csv_file_path, index=False)
 driver.quit()
