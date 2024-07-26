@@ -6,7 +6,9 @@ from initdriver import get_driver
 
 title = "Web Developer"
 location = "Canada"
-size = 120
+
+size = 5
+
 url = construct_url(title,location)
 print("preparing browser")
 driver = get_driver()

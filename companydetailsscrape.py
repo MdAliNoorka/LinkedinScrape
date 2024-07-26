@@ -7,7 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from initdriver import get_driver
 import pandas as pd
 from parseurl import remove_url_parameters, originalSubdomain
-
+max_members = 2
 # Load data
 data = pd.read_csv("companies_unique.csv")
 urls = data["Company Linkedin Link"]
@@ -17,7 +17,7 @@ expiry_date = datetime.now() + timedelta(days=60)
 expiry_timestamp = int(time.mktime(expiry_date.timetuple()))
 
 # li_at cookie value
-value = "YOUR_COOKIE_VALUE"
+value = "AQEDATz8-pUBo_9IAAABkFRFCNgAAAGQ8m_Kw1YALCWkbQvrnNPS4cn6DGV1Xe0Me7S_IUltfMBFSQuKR0Jwq2Cj6PoxpgjihHUxjTEM2TYorUbVZcDX8gZ3gB80NetVwL3_nC4p4bn2OZ0Ml8gffKoo"
 # Initialize driver
 driver = get_driver()
 driver.get("https://www.linkedin.com/")
@@ -99,16 +99,25 @@ for url in urls:
         continue
     li = 0
     while 1:
+        if li >= max_members:
+            print(f'members extracted: {li}')
+            break
         time.sleep(2)
         cards = driver.find_elements(By.CSS_SELECTOR,"li.grid.grid__col--lg-8.block.org-people-profile-card__profile-card-spacing")
         new_cards = cards[li:]
         if li == len(cards):
             break
         for card in new_cards:
+            if li >= max_members:
+                print(f'members extracteds: {li}')
+                break
             li+=1
             driver.execute_script("arguments[0].scrollIntoView()",card)
-            time.sleep(0.1)
-            role = card.find_element(By.CSS_SELECTOR,"div.ember-view.lt-line-clamp.lt-line-clamp--multi-line")
+            time.sleep(0.1),
+            try:
+                role = card.find_element(By.CSS_SELECTOR,"div.ember-view.lt-line-clamp.lt-line-clamp--multi-line")
+            except:
+                continue
             try:
                 link = card.find_element(By.TAG_NAME,"a").get_attribute("href")
             except:
@@ -155,14 +164,36 @@ print(f'max len: {max_len}')
 column_names = [f'Column {i+4}' for i in range(max_len)]
 print(f'column_names: {column_names}')
 
-# Create a DataFrame from the padded talent roles
-talent_urls_df = pd.DataFrame(padded_talent_urls, columns=column_names)
+# Creating the new DataFrame with additional column
+new_df = pd.DataFrame(columns=df.columns.tolist() + ["person's linkedin url"])
 
-# Concatenate the original DataFrame with the new DataFrame
-df = pd.concat([df, talent_urls_df], axis=1)
+for i in range(len(df)):
+    row = df.iloc[i].to_dict()  # Convert the row to a dictionary
+    for j in range(len(padded_talent_urls[i])):
+        row_copy = row.copy()  # Make a copy of the row dictionary
+        row_copy["person's linkedin url"] = padded_talent_urls[i][j]
+        new_df = new_df._append(row_copy, ignore_index=True)
+        print(f"row_copy: {row_copy}")
+        print(f"new df: {new_df}")
+    if len(padded_talent_urls[i]) == 0:
+        row["person's linkedin url"] = None
+        new_df = new_df._append(row, ignore_index=True)
 
-# Write the updated DataFrame to the CSV file
-df.to_csv(output_csv_file_path, index=False)
+new_df.to_csv(output_csv_file_path, index=False)
+
+#
+# # Create a DataFrame from the padded talent roles
+# talent_urls_df = pd.DataFrame(padded_talent_urls, columns=column_names)
+#
+# # Concatenate the original DataFrame with the new DataFrame
+# df = pd.concat([df, talent_urls_df], axis=1)
+#
+# # Write the updated DataFrame to the CSV file
+# df.to_csv(output_csv_file_path, index=False)
+#
+
+
+
 
 
 #
